@@ -13,14 +13,14 @@ Review a REST, RPC, or library API design and report concrete problems, with a v
 
 2. **Establish the baseline.** Base is `main`, or the default branch if `main` does not exist. Get each changed file's previous version with `git show <merge-base>:<file>`, where merge-base is `git merge-base HEAD <base>`. If the file is absent at the merge base, or the target is not in git, state that the API is new or unbaselined and skip the breaking-change classification in step 8.
 
-3. **Check naming.** List every resource, path, field, parameter, method, and error code. Flag mixed casing in one surface (camelCase next to snake_case), verbs in REST paths such as `/getUser`, singular and plural mixed for the same resource, and one concept given two names. Use `grep -rn` to find every variant.
+3. **Check naming.** List every resource, path, field, parameter, method, and error code. Flag mixed casing in one surface (camelCase next to snake_case), verbs in REST paths such as `/getUser`, singular and plural mixed for the same resource, and one concept given two names. Use `grep -rn` to find each variant.
 
 4. **Check consistency.** Compare endpoints of the same kind: ID format, list and single-item envelope shape, date and time format, boolean and enum conventions, and HTTP method for the same action.
 5. **Check errors.** Confirm each error has a stable machine-readable code and a human message, and that status codes match meaning (400 vs 422, 404, 409). Flag 5xx responses returned for client-caused errors, and any error a client would have to parse from free text.
 
 6. **Check collections.** Every list endpoint needs a default and maximum page size, an opaque cursor or a documented offset, and a stated sort order. Flag unbounded lists, offset pagination that skips or duplicates items under concurrent inserts, and cursors that expose internal IDs.
 
-7. **Check idempotency.** For each POST, PUT, PATCH, DELETE, and RPC mutation, decide whether a retry is safe. Check for idempotency keys on creates, that PUT replaces the whole resource, that a repeated DELETE returns a documented result, and that the spec states whether PATCH merges or replaces.
+7. **Check idempotency.** For each mutation (POST, PUT, PATCH, DELETE, RPC), decide whether a retry is safe. Check for idempotency keys on creates, that PUT replaces the whole resource, that a repeated DELETE returns a documented result, and that the spec states whether PATCH merges or replaces.
 
 8. **Check versioning and compatibility.** Against the baseline from step 2, classify each change. Breaking: removed or renamed field or endpoint, changed type, newly required input, changed default, narrowed output, changed error code or status. Additive: new optional field, new endpoint, new enum value only where clients are documented to ignore unknown values. Check where the version lives (path, header, or package) and whether breaking changes bump it.
 
