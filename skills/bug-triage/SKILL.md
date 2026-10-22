@@ -17,19 +17,19 @@ Diagnose one reported bug systematically, from reproduction to root cause, then 
 
 4. **Minimize.** Shrink the input while the failure persists. Remove one argument, row, or code path at a time and rerun after each. If this takes more than about ten reruns, stop and record the smallest failing input so far.
 
-5. **Form hypotheses.** Locate the failing code from the stack trace, or with `Grep` on the error string and symbol names, then inspect it with `Read`. Write down 2 to 4 hypotheses, each with a prediction a specific check would confirm or refute.
+5. **Form hypotheses.** Locate the failing code from the stack trace, or with `Grep` on the error string and symbol names, then inspect it with `Read`. Write 2 to 4 hypotheses, each with a checkable prediction.
 
-6. **Test hypotheses.** For each one, add a temporary print or assertion, or run a targeted command, and check the prediction. Mark each hypothesis confirmed, refuted, or unresolved. Before finishing, remove the temporary lines you added and check that `git diff` shows only the intended change.
+6. **Test hypotheses.** Test each with a temporary print, assertion, or targeted command. Mark each hypothesis confirmed, refuted, or unresolved. Before finishing, remove the temporary lines you added and check that `git diff` shows only the intended change.
 
-7. **Bisect if the cause is unclear.** If the bug is a regression and a good commit is known, run `git bisect start`, mark the commits with `git bisect good` and `git bisect bad`, and use `git bisect run <test-command>` with the minimal reproduction. If the tree has uncommitted changes, bisect in a separate `git worktree` instead of stashing. Afterwards, run `git bisect reset` even if the run failed, and remove any temporary worktree. This is the one allowed reset, as an exception to step 2.
+7. **Bisect if the cause is unclear.** If the bug is a regression and a good commit is known, run `git bisect start`, mark the commits with `git bisect good` and `git bisect bad`, and use `git bisect run <test-command>` with the minimal reproduction. If the tree has uncommitted changes, bisect in a separate `git worktree` instead of stashing. Always run `git bisect reset` afterwards, even if the run failed (the one allowed exception to step 2's no-reset rule), and remove any temporary worktree.
 
-8. **Name the root cause.** State the exact line or condition that is wrong and why. The place where the error appears is not necessarily the cause. Confirm it against the observed output. If no hypothesis is confirmed, do not name a root cause or continue to steps 9 and 10; report the next check instead.
+8. **Name the root cause.** State the exact line or condition that is wrong and why. The place where the error appears is not necessarily the cause. Confirm it against the observed output. If no hypothesis is confirmed, skip steps 9 and 10 and report the next check.
 
-9. **Write the regression test.** Add a test beside the existing ones, in the repo's test framework, using the minimal input and asserting the correct behavior. If the repo has no test suite, keep the reproduction as a runnable script and say so in the output. Run it before the fix and confirm it fails for the reported reason. If it passes before the fix, it does not capture the bug; rewrite it first.
+9. **Write the regression test.** Add a test beside the existing ones, in the repo's test framework, using the minimal input and asserting the correct behavior. If the repo has no test suite, keep the reproduction as a runnable script and say so in the output. Run it before the fix and confirm it fails for the reported reason; if it passes, rewrite it.
 
 10. **Apply the minimal fix.** Change only the root cause, in the existing code style, with `Edit`. Do not fix symptoms, such as catching the exception downstream.
 
-11. **Verify.** Rerun the regression test and the reproduction, then run the project's full test command (for example `npm test`, `pytest`, or `go test ./...`, whichever the repo uses). If unrelated tests fail, check whether they also fail on the unmodified code (use a `git worktree` of `HEAD`, never stash) before blaming the fix.
+11. **Verify.** Rerun the regression test and the reproduction, then the project's full test command (e.g. `npm test`, `pytest`, `go test ./...`). If unrelated tests fail, check them on unmodified code in a `git worktree` of `HEAD` (never stash) before blaming the fix.
 
 ## Output format
 
