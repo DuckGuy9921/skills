@@ -9,13 +9,13 @@ Turn a feature idea into testable user stories with acceptance criteria, edge ca
 
 ## Steps
 
-1. **Get the idea.** Use the text after `/user-story-writer` as the feature idea. If there is no text, ask the user one clarifying question (what feature they want to specify) and stop until they answer. Do not ask more than one question.
+1. **Get the idea.** Use the text after `/user-story-writer` as the feature idea. If there is no text, ask the user one clarifying question (what feature they want to specify) and stop until they answer. Do not ask more than one question. If the text names several unrelated features, write stories for the first one only and list the others as out of scope.
 
-2. **Ground in the repo.** Run `git status` in the working directory and use Grep and Glob to search for the idea's key nouns (routes, components, models, field names) in the working directory. Read the matching files. Record what already exists so stories extend it instead of duplicating it. Never describe current behavior you have not read.
+2. **Ground in the repo.** If the working directory is a git repo, run `git status` to see uncommitted work. Then use Grep and Glob to search for the idea's key nouns (routes, components, models, field names). Read the matching files. If nothing matches, or the directory is not a code repo, record that and continue. Record what already exists so stories extend it instead of duplicating it. Never describe current behavior you have not read.
 
 3. **Identify actors.** List each distinct user role the idea names or implies. If none is named, assume one primary user and state that assumption in the output.
 
-4. **Write the stories.** One story per user goal, in the form `As a <actor>, I want <capability>, so that <benefit>.` If a story needs two independent behaviors, split it. Stop at 8 stories; list any extra as out of scope.
+4. **Write the stories.** One story per user goal, in the form `As a <actor>, I want <capability>, so that <benefit>.` If a story needs two independent behaviors, split it. Write at most 8 stories; list any extra as out of scope.
 
 5. **Write acceptance criteria.** Give 2 to 5 Given/When/Then criteria per story. Each `Then` must name one observable result a test can assert: a status code, displayed text, a stored value, or a changed record. Replace vague words such as "fast", "easy", or "user-friendly" with a number or an observable outcome.
 
@@ -23,7 +23,7 @@ Turn a feature idea into testable user stories with acceptance criteria, edge ca
 
 7. **Set out of scope.** List capabilities the idea could imply but this work excludes, each with a one-line reason.
 
-8. **Size each story.** Use XS (one file, copy or config change), S (one component plus tests), M (several files in one layer), L (crosses frontend and backend or adds a data model), or XL (too big). Mark every L and XL story as needing a split and give the split.
+8. **Size each story.** Use XS (one file, copy or config change), S (one component plus tests), M (several files in one layer), L (crosses frontend and backend or adds a data model), or XL (too big). Mark every L and XL story as needing a split and give the split as the smaller stories that replace it.
 
 9. **Recheck testability.** Reread every criterion. If any `Then` has no concrete expected result, rewrite it before output.
 
@@ -46,7 +46,7 @@ As a <actor>, I want <capability>, so that <benefit>.
 **Edge cases**
 - <case>: <expected result>
 
-**Size:** <XS|S|M|L|XL> (<reason>)
+**Size:** <XS|S|M|L|XL> (<reason>; for L or XL, add "Split into: <stories>")
 
 (repeat for each story)
 
@@ -59,5 +59,5 @@ As a <actor>, I want <capability>, so that <benefit>.
 - Write the output in chat. Do not create a file unless the user asks for one.
 - Do not invent APIs, file names, field names, or existing behavior. If the repo does not show it, say it is unknown.
 - Do not write implementation code or propose a technical design beyond the sizing hint.
-- If the idea spans more than three separate areas of the codebase, spawn one subagent per area with `model: haiku` to gather repo context in parallel, then merge the results yourself.
+- If the idea spans more than three separate areas of the codebase and subagents are available, spawn one subagent per area with `model: haiku` to gather repo context in parallel, then merge the results yourself. Otherwise search the areas one after another.
 - Keep edge cases tied to a story. Do not add generic checklists that do not fit the feature.

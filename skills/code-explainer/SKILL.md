@@ -11,19 +11,19 @@ Explain an unfamiliar file, function, or module by tracing its entry points, dat
 
 1. **Get the target.** Use the text after `/code-explainer` as the target: a file path, a function or class name, or a `path:line`. If there is none, use the code most recently discussed in the conversation. If that is also missing, ask one question naming the file or symbol you need, then stop. Pitch the explanation at a working developer who has not read this code.
 
-2. **Locate the definition.** For a path, run `Read` on the file. For a symbol, run `Grep` with `output_mode: "content"` and `-n: true` using a pattern such as `def NAME|function NAME|class NAME|NAME\s*=` across the repo. If several definitions match, explain the most likely one and list the others. Record each definition as `/abs/path/file.ext:line`.
+2. **Locate the definition.** For a path, `Read` the file, reading only the section that holds the symbol if the file is longer than about 2000 lines. For a `path:line`, read about 80 lines around that line using `offset` and `limit`. For a symbol, run `Grep` with `output_mode: "content"` and `-n: true` using a pattern such as `def NAME|function NAME|class NAME|NAME\s*=` across the repo. If several match, explain the most likely one and list the others. Record each as `/abs/path/file.ext:line`.
 
-3. **Find entry points.** Grep for call sites of the symbol, excluding its definition. Check how it is reached: exported or imported names, route or handler registration, a CLI `main` or `if __name__ == "__main__"` block, `package.json` `scripts` or `bin`, and event or scheduled hooks. Trace callers up one or two levels until you reach something a user or system triggers.
+3. **Find entry points.** Grep for call sites of the symbol, then drop matches on its definition line. Check how it is reached: exported or imported names, route or handler registration, a CLI `main` or `if __name__ == "__main__"` block, `package.json` `scripts` or `bin`, and event or scheduled hooks. Trace callers up one or two levels until you reach something a user or system triggers. If nothing calls the symbol, say it is not reached inside the repo (it may be called externally or dynamically) and stop tracing.
 
 4. **Trace the data flow.** Read the full function body. List its inputs and where each comes from, each transformation in order, its outputs, and its side effects (file, network, database, global state, logging). Read the callees that affect the result. Skip utility code that does not change the answer.
 
-5. **Identify invariants.** Look for guard clauses, `assert` or `raise` statements, type hints, validation, and comments that state assumptions. Grep the test directories for the symbol to find tests that pin behavior. Tag each invariant `enforced` (code checks it), `tested` (only a test pins it), or `assumed` (neither; say so).
+5. **Identify invariants.** Look for guard clauses, `assert` or `raise` statements, type hints, validation, and comments that state assumptions. Grep the test files (for example `tests/`, `test/`, `*_test.*`, `*.spec.*`) for the symbol to find tests that pin behavior. Tag each invariant `enforced` (code checks it), `tested` (only a test pins it), or `assumed` (neither; say so).
 
-6. **Check history when intent is unclear.** If a purpose or a surprising branch is not explained by the code or tests, run `git log --oneline -5 -- <file>`, and for a specific line `git blame -L <start>,<end> <file>`. Quote a commit message only when it supports your reading.
+6. **Check history when intent is unclear.** If a purpose or a surprising branch is not explained by the code or tests, and the file is in a git repository (check with `git rev-parse --is-inside-work-tree`), run `git --no-pager log --oneline -5 -- <file>`, and for a specific line `git --no-pager blame -L <start>,<end> <file>`. Otherwise, say that history is unavailable. Quote a commit message only when it supports your reading.
 
 7. **Verify before writing.** Re-read every `file:line` you plan to cite and confirm it says what you claim. Do not describe behavior you have not read. Label anything you inferred as inferred.
 
-8. **Parallelise wide traces.** If the trace spans many modules, spawn one subagent per module with `model: haiku` to read and summarise its part, then combine the results yourself. Skip this for a single file.
+8. **Parallelise wide traces.** During steps 3 and 4, if the trace spans many modules and subagents are available, spawn one subagent per module with `model: haiku` to read and summarise its part. Treat each summary as unverified and check every line you cite yourself in step 7. Skip this for a single file or when subagents are unavailable.
 
 ## Output format
 

@@ -9,7 +9,7 @@ Write a pull request title and description grounded in the real diff and commit 
 
 ## Steps
 
-1. **Establish the range.** Run `git rev-parse --abbrev-ref HEAD` for the branch name. Find the base with `git symbolic-ref refs/remotes/origin/HEAD` and strip it to a branch name. If the user named a base after `/pr-description`, use that instead. If no base can be determined, assume `main` and say so in the output.
+1. **Establish the range.** Find the base with `git symbolic-ref --short refs/remotes/origin/HEAD` (prints e.g. `origin/main`). Keep the `origin/` prefix in every later git command so comparisons use the remote base, not a possibly stale local branch. If the user named a base after `/pr-description`, use that instead, adding the `origin/` prefix. If the lookup fails, assume `origin/main` and note it under Assumptions. If `git branch --show-current` prints nothing (detached HEAD) or prints the base name, stop and tell the user to check out the feature branch.
 
 2. **Check for commits.** Run `git log --oneline <base>..HEAD`. If the output is empty, stop and tell the user the branch has no commits ahead of the base. Do not write a description for nothing.
 
@@ -21,9 +21,9 @@ Write a pull request title and description grounded in the real diff and commit 
 
 6. **Establish why and what.** State the problem or request the change addresses, drawn from commits and the diff. Then state what changed at the file or behaviour level. Verify every claim against the diff; never copy commit subjects without checking them.
 
-7. **Work out testing.** Run `git diff --name-only <base>...HEAD` and look for test files among the changes. List only tests that commit messages or the user show were run. Otherwise write "Not run" and name the test command found in `package.json`, `Makefile`, or `pyproject.toml`. Never claim tests passed without evidence.
+7. **Work out testing.** Run `git diff --name-only <base>...HEAD` and note which test files changed. Changed test files are not evidence of a test run. List a test run only if a commit message or the user states it. Otherwise write "Not run" and name the test command found in `package.json`, `Makefile`, or `pyproject.toml`, or say none was found. Never claim tests passed without evidence.
 
-8. **Identify risks.** Check for database migrations, changed public APIs or config defaults, removed behaviour, and changed code with no test coverage. Tie each risk to a file or function. If none apply, write "No specific risks beyond normal review" rather than inventing one.
+8. **Identify risks.** Check for database migrations, changed public APIs or config defaults, removed behaviour, and source changes with no changed test file in the Step 7 list. Tie each risk to a file or function. If none apply, write "No specific risks beyond normal review" rather than inventing one.
 
 9. **Write the title.** Keep it under 72 characters, in imperative mood, describing the outcome. Use a Conventional Commit prefix only if `git log --oneline -20` shows the repo uses one.
 
@@ -31,7 +31,7 @@ Write a pull request title and description grounded in the real diff and commit 
 
 ## Output format
 
-```
+````
 **Title:** <title>
 
 **Base:** <base branch> | <N> commits | <M> files changed
@@ -40,13 +40,13 @@ Write a pull request title and description grounded in the real diff and commit 
 <the description body, ready to paste>
 ```
 
-**Assumptions:** <only if a base or test command was assumed; otherwise omit this line>
-```
+**Assumptions:** <only if a base or test command was assumed, files were skipped, or a template field is "Not provided"; otherwise omit this line>
+````
 
 ## Notes
 
-- Do not create the PR. Do not run `gh pr create`, call `create_pull_request`, push, commit, or edit any file.
-- Do not invent ticket numbers, issue links, screenshots, or reviewer names. If a template asks for something unknown, write "Not provided" and mention it in the reply.
-- If the diff is very large, use `--stat` and the commit list to scope the work, and say in the output which files were not read in full.
-- Append an attribution footer only if the session's own rules require one. Otherwise add none.
+- Do not create or edit the PR. Do not run any command or tool that creates or edits a PR (such as `gh pr create`, `gh pr edit`, or a GitHub create/update pull request tool), and do not push, commit, or edit any file.
+- Do not invent ticket numbers, issue links, screenshots, or reviewer names. If a template asks for something unknown, write "Not provided" and list it under Assumptions.
+- If the diff is very large, use `--stat` and the commit list to scope the work, and list the files not read in full under Assumptions.
+- If a user or session instruction (such as CLAUDE.md or a system reminder) specifies an attribution footer for pull request descriptions, append that footer verbatim at the end of the markdown block. Otherwise add none.
 - Do not add a preamble before the output block.

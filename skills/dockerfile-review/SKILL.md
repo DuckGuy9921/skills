@@ -21,9 +21,9 @@ Review the repository's Docker build and compose files against common image-qual
 
 6. **Check pinned tags.** Every `FROM` and every compose `image:` should use a specific version tag or a digest. Flag `:latest` and untagged images. Flag major-only tags as lower severity.
 
-7. **Check the runtime user.** Confirm the final stage sets `USER` to a non-root user that exists in the image. Flag a missing `USER` and a `USER root` in the final stage. In compose, flag `user: root` and `privileged: true`.
+7. **Check the runtime user.** Confirm the final stage sets `USER` to a non-root user. Statically, accept a numeric UID or a user name the Dockerfile creates (`useradd`, `adduser`, `addgroup`); do not assume a name exists in the base image without evidence. Flag a missing `USER` and a `USER root` in the final stage. In compose, flag `user: root` and `privileged: true`.
 
-8. **Check secrets.** Run `grep -nEi 'password|secret|token|api[_-]?key|aws_' <files>` and inspect each hit. Flag `ARG` or `ENV` values that hold secrets, because they persist in image history. Flag `COPY .env` or credential files copied into a layer. Recommend `RUN --mount=type=secret` instead.
+8. **Check secrets.** Run `grep -nEi 'password|secret|token|api[_-]?key|aws_' <target files from step 1>` and inspect each hit. Flag `ARG` or `ENV` values that hold secrets, because they persist in image history. Flag `COPY .env` or credential files copied into a layer. Recommend `RUN --mount=type=secret` instead.
 
 9. **Check healthchecks.** For long-running services, confirm a `HEALTHCHECK` instruction or compose `healthcheck:` exists. Flag checks that only test that a process exists when the service exposes an endpoint. Skip one-shot jobs.
 
@@ -49,4 +49,4 @@ Last, a `Passed` list with one line per check that found nothing. If there are n
 - Do not pull images, build, or run containers. The review is static.
 - Ignore `root` in a build-only stage that is discarded before the final image.
 - For a development-only compose override, cap severity at medium and say it is for development.
-- Do not report a finding you did not verify in the file text. Do not present hadolint output as your own analysis.
+- Do not present hadolint output as your own analysis.

@@ -9,11 +9,11 @@ Generate user-facing release notes from the git history between two refs, groupe
 
 ## Steps
 
-1. **Resolve the range.** Take `FROM..TO` from the text after `/changelog-writer`. If only one ref is given, use it as TO and the tag before it as FROM. If nothing is given, set TO to the latest tag (`git describe --tags --abbrev=0`) and FROM to the tag before it, found with `git tag --merged TO --sort=-creatordate`. Confirm each ref with `git rev-parse --verify <ref>`. If a ref does not resolve, ask the user once for the correct ref and stop. If the repo has no tags, use the root commit (`git rev-list --max-parents=0 HEAD`) and state that assumption in the output.
+1. **Resolve the range.** Take `FROM..TO` from the text after `/changelog-writer`. If only one ref is given, use it as TO. If nothing is given, set TO to `HEAD`. Then find FROM: if TO is a tag (HEAD counts when it is tagged), FROM is the next tag after it in `git tag --merged TO --sort=-creatordate` (the first line is TO itself); otherwise FROM is the latest tag reachable from TO (`git describe --tags --abbrev=0 TO`). Confirm each ref with `git rev-parse --verify <ref>`. If a ref does not resolve, ask the user once for the correct ref and stop. If no earlier tag exists, or the repo has no tags, use the root commit (`git rev-list --max-parents=0 HEAD`) as FROM and state that assumption in the output.
 
-2. **List the commits.** Run `git log --no-merges --format='%h%x09%s%x09%b%x1e' FROM..TO` to get hash, subject and body for each commit. Pull PR numbers from `(#123)` suffixes in subjects.
+2. **List the commits.** Run `git log --no-merges --format='%h%x09%s%x09%b%x1e' FROM..TO` to get hash, subject and body for each commit. Pull PR numbers from `(#123)` suffixes in subjects. If the range has more than 300 commits, ask the user once whether to narrow it before continuing.
 
-3. **Inspect unclear commits.** For a commit whose subject is vague (`wip`, `fix stuff`, `update`) or that touches a public surface, run `git show --stat <hash>` and read the relevant diff before classifying it. If more than about 40 commits need this, split them across subagents with `model: haiku`, each returning one line per commit.
+3. **Inspect unclear commits.** For a commit whose subject is vague (`wip`, `fix stuff`, `update`) or that touches a public surface, run `git show --stat <hash>` and read the relevant diff before classifying it. If more than about 40 commits need this and subagents are available, split them across subagents on a cheaper model, each returning one line per commit.
 
 4. **Detect breaking changes.** Mark a commit breaking only if one of these holds: its body has a `BREAKING CHANGE:` footer, its Conventional Commit type ends in `!` (such as `feat!:`), or its diff removes or renames a public export, CLI flag, config key, environment variable, API route or file format. Confirm the last case with `git show <hash> -- <path>` and look for removed lines on the public surface. Do not mark a change breaking on a guess.
 
@@ -21,7 +21,7 @@ Generate user-facing release notes from the git history between two refs, groupe
 
 6. **Rewrite for users.** Turn each kept commit into one line that describes its effect for a user. Start with a verb, remove hashes and internal module names, and merge commits that describe the same change. Append `(#123)` when a PR number exists.
 
-7. **Set the version and date.** Use the version the user gives, otherwise the TO tag name as written. Take the date from `git log -1 --format=%cs TO`. Do not choose a semver bump unless asked. If asked, suggest major for breaking changes, minor for Added entries, and patch otherwise, labelled as a suggestion.
+7. **Set the version and date.** Use the version the user gives, otherwise the TO tag name as written, or `Unreleased` when TO is not a tag. Take the date from `git log -1 --format=%cs TO`. Do not choose a semver bump unless asked. If asked, suggest major for breaking changes, minor for Added entries, and patch otherwise, labelled as a suggestion.
 
 8. **Flag what you cannot classify.** List any commit you could not place confidently under `Needs review:` rather than guessing a section.
 

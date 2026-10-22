@@ -5,34 +5,39 @@ description: Use when the user invokes /codebase-tour or asks for an onboarding 
 
 # Codebase Tour
 
-Produce a verified onboarding map of a repository: layout, entry points, build, test and run commands, architecture, conventions, hotspots, and where a newcomer should start.
+Produce a verified onboarding map of a repository: layout, entry points, commands, architecture, conventions, hotspots, and a suggested starting path.
 
 ## Steps
 
-1. **Confirm the repo root.** Run `git rev-parse --show-toplevel` in the working directory. If that fails, use the working directory when it holds source files, and state the assumption in the output. If the user named a path, scope the whole tour to that path and say so.
+1. **Confirm scope.** Run `git rev-parse --show-toplevel` in the working directory. If that fails and the directory holds source files, use it and note that it is not a git repo. If the user named a path, limit every later command to that path (`git ls-files -- <path>`, `git grep ... -- <path>`) and say so. If there is no path and the directory holds no code, ask the user one question (which repo or path to tour) and stop until they answer.
 
-2. **Map the layout.** Run `git ls-files | cut -d/ -f1-2 | sort | uniq -c | sort -rn | head -30`. Skip vendored or generated trees (`node_modules`, `vendor`, `dist`, `build`, `.venv`).
+2. **Map the layout.** Run `git ls-files | cut -d/ -f1-2 | sort | uniq -c | sort -rn | head -30`. Leave out vendored or generated trees (`node_modules`, `vendor`, `dist`, `build`, `.venv`) from the summary.
 
-3. **Find entry points.** Read whichever manifests exist: `package.json`, `pyproject.toml`, `setup.py`, `Cargo.toml`, `go.mod`, `pom.xml`, `build.gradle`, `Makefile`, `Dockerfile`, `docker-compose.yml`. Record `main`, `bin` and `scripts` fields, `[project.scripts]`, `[[bin]]` tables, and `func main` locations found with `grep -rln "func main" --include=*.go`. Read the first 60 lines of each entry file.
+3. **Find entry points.** Read whichever manifests exist: `package.json`, `pyproject.toml`, `setup.py`, `Cargo.toml`, `go.mod`, `pom.xml`, `build.gradle`, `Makefile`, `Dockerfile`, `docker-compose.yml`. Record `main`, `bin` and `scripts` fields, `[project.scripts]`, `[[bin]]` tables, and Go `func main` files from `grep -rln "func main" --include=*.go`. Read the first 60 lines of each entry file.
 
-4. **Extract commands.** Collect build, test, lint and run commands from manifests, `Makefile` targets, `.github/workflows/*.yml` and the README. Label each command with the file it came from. For a tool you are unsure about, check it exists with `command -v` and read its `--help`. Do not run install, build or test commands.
+4. **Extract commands.** Collect build, test, lint and run commands from manifests, `Makefile` targets, `.github/workflows/*.yml` and the README. Label each with its source file. To confirm a tool, run `command -v <tool>` and, only if it resolves on PATH, `<tool> --help`. Never run repo-local scripts (such as `./gradlew`) to get help, and never run install, build, test or run commands.
 
 5. **Read the docs.** Read `README*`, `CONTRIBUTING*`, any `docs/` index, and `CLAUDE.md` or `AGENTS.md` if present. Mark each doc claim you cannot confirm in code as unverified.
 
-6. **Trace the architecture.** Start from one entry point and follow calls or imports through three to five files with Read and `grep -rn`. Name each layer (routing, services, storage) and its directory. For a repo over about 2,000 tracked files, you may use one `model: haiku` subagent per top-level directory, each capped at 150 words.
+6. **Trace the architecture.** Start from one entry point and follow calls or imports through three to five files using Read and `grep -rn`. Name each layer (for example routing, services, storage) and its directory. If subagents are available and the repo has more than about 2,000 tracked files, give each top-level directory to its own subagent, capped at 150 words per report.
 
-7. **Capture conventions.** Read two or three representative source files and one test file. Note naming, error handling, config loading, test location and framework, and formatter or linter config (`.editorconfig`, `ruff.toml`, `.eslintrc*`, `.prettierrc`, `rustfmt.toml`). Report only what those files show.
+7. **Capture conventions.** Read two or three representative source files and one test file, if any exists. Note naming, error handling, config loading, test location and framework, and formatter or linter config (`.editorconfig`, `ruff.toml`, `.eslintrc*`, `.prettierrc`, `rustfmt.toml`). Report only what those files show.
 
-8. **Find hotspots.** Run `git log --since="6 months ago" --name-only --pretty=format: | sort | uniq -c | sort -rn | head -15` for churn. Run `git ls-files -z | xargs -0 wc -l | sort -rn | head -15` for size. Run `git grep -c -E "TODO|FIXME|HACK" | sort -t: -k2 -rn | head -10` for debt markers. Name the signal behind each hotspot. If the repo has no git history, use size and debt markers only and say so.
+8. **Find hotspots.** Run each of these:
+   - Churn: `git log --since="6 months ago" --name-only --pretty=format: | sort | uniq -c | sort -rn | head -15`
+   - Size: `git ls-files -z | xargs -0 wc -l | sort -rn | head -16` (ignore the `total` line)
+   - Debt markers: `git grep -c -E "TODO|FIXME|HACK" | sort -t: -k2 -rn | head -10`
 
-9. **Choose a starting path.** Pick three to five files to read in order, each with a one-line reason, and one small first task, such as a test to read or a function to trace. Every path must exist in the repo.
+   Name the signal behind each hotspot. With no git history, use size and debt markers only and say so.
+
+9. **Choose a starting path.** Pick three to five files to read in order, each with a one-line reason, and one small first task, such as a test to read or a function to trace. Confirm every path exists with `git ls-files`.
 
 ## Output format
 
 Return these sections in order:
 
 - Title `# Codebase tour` plus the repo directory name, then a one- or two-sentence summary.
-- `## Layout`: a bulleted list of the top directories with their purpose.
+- `## Layout`: bulleted top directories with their purpose, eight to ten entries.
 - `## Entry points`: bulleted `path:line` references with what runs there.
 - `## Commands`: a table with columns `Purpose`, `Command`, `Source`.
 - `## Architecture`: one short paragraph, then an ordered list of layers with paths.
@@ -43,8 +48,6 @@ Return these sections in order:
 
 ## Notes
 
-- Every fact needs a file read or command output. Otherwise, list it under Unverified.
-- The tour is read-only. Do not edit files, run installs, or start servers. Checking `--version` or `--help` is fine.
-- Do not write a report file.
-- Do not narrate each directory. Keep the layout to eight to ten entries.
-- Ask one question only if the working directory holds no code and no path was given; otherwise assume it and state that.
+- Every fact needs a file read or command output. Otherwise list it under Unverified.
+- The tour is read-only. Do not edit files, run installs, start servers, or write a report file. Checking `--version` or `--help` on a PATH tool is fine.
+- Do not narrate each directory.

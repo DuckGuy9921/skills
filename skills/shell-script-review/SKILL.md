@@ -9,9 +9,9 @@ Review one or more shell scripts for correctness and safety, apply minimal harde
 
 ## Steps
 
-1. **Locate the scripts.** Use the text after `/shell-script-review` as a path or glob. If it is empty, run `git diff --name-only $(git merge-base HEAD origin/main)` and keep the `.sh` files and files with a `#!` shell shebang. If that finds nothing, run `git ls-files '*.sh'`. If still nothing, ask one question naming the file you need, then stop.
+1. **Locate the scripts.** Use the text after `/shell-script-review` as a path or glob. If it is empty, run `git diff --name-only $(git merge-base HEAD origin/main)` and keep the `.sh` files and files with a `#!` shell shebang. If that command errors (for example, no `origin/main`) or finds nothing, run `git ls-files '*.sh'`. If still nothing, ask one question naming the file you need, then stop.
 
-2. **Read each script in full.** Use Read on the whole file. Note the shebang: `bash`, or `/bin/sh`. Scripts declared as `sh` must not use bash-only features such as `[[ ]]`, arrays, `${var,,}`, `pipefail`, or `source`.
+2. **Read each script in full.** Use Read on the whole file. Note the shebang: `bash` (including `/usr/bin/env bash`), or `sh` (including `/bin/sh`). Scripts declared as `sh` must not use bash-only features such as `[[ ]]`, arrays, `${var,,}`, `pipefail`, or `source`.
 
 3. **Run static checks.** Run `bash -n FILE` for syntax. Run `shellcheck -x FILE` if `command -v shellcheck` succeeds. For `sh` scripts, also run `checkbashisms FILE` if it is installed. If a tool is missing, write that in the report and do the matching checks by hand.
 
@@ -29,9 +29,9 @@ Review one or more shell scripts for correctness and safety, apply minimal harde
 
 10. **Apply minimal fixes.** Edit only the problems you found, using Edit. Keep the script's behavior and style. Do not rewrite working code. Do not add `# shellcheck disable` without a comment giving the reason.
 
-11. **Verify.** Re-run `bash -n` and `shellcheck -x` on each edited file. Never execute a script that deletes, installs, or contacts a network service to test it. For safe checks, copy the script into the scratchpad and run it there with destructive commands stubbed.
+11. **Verify.** Re-run `bash -n` and `shellcheck -x` on each edited file. Never execute a script that deletes, installs, or contacts a network service to test it. For safe checks, copy the script into a temporary directory (`mktemp -d`) and run it there with destructive commands stubbed.
 
-12. **Parallelise large batches.** If there are more than five scripts, review them with subagents using `model: haiku`, one script per subagent, each returning findings only.
+12. **Parallelise large batches.** If there are more than five scripts and subagents are available, review them with subagents using `model: haiku`, one script per subagent, each returning findings only. Otherwise review them one at a time.
 
 ## Output format
 
@@ -60,6 +60,6 @@ Review one or more shell scripts for correctness and safety, apply minimal harde
 
 - Report only findings you verified in the file. Never invent shellcheck codes or line numbers.
 - Severity is `high` for destructive paths, unquoted expansion in commands, and missing strict mode. Use `medium` for portability and traps. Use `low` for style.
-- Do not change behavior, command output format, or public arguments while hardening.
+- Do not change behavior, command output format, or public arguments while hardening. The one intended exception is adding strict mode under step 4, which can make a script exit earlier; mention that in the report.
 - Do not install tools without the user's permission. Report the missing tool instead.
 - Skip generated files, vendored code, and files under `.git`.

@@ -9,17 +9,17 @@ Find the real bottleneck in a slow piece of code by measuring first, changing on
 
 ## Steps
 
-1. **Pin down the target.** Take the text after `/perf-investigation` as the slow thing: a command, test, endpoint, function or file. If there is no text, run `git status` and `git log --oneline -5` to look for an obvious candidate. If none exists, ask the user one question about what is slow and stop until they answer. State the target and the success metric (wall time, p95 latency or peak memory) before measuring.
+1. **Pin down the target.** Take the text after `/perf-investigation` as the slow thing: a command, test, endpoint, function or file. If there is no text, run `git status` and `git log --oneline -5` to look for an obvious candidate. If none exists, ask the user one question about what is slow and stop until they answer. State the target and the success metric (wall time, p95 latency or peak memory) before measuring. If running the target would write data, call a live or paid service, or delete files, ask the user to confirm or to supply a safe test input first.
 
-2. **Record the baseline.** Run the target at least 5 times with identical inputs, using `time` for commands or `hyperfine` if `command -v hyperfine` succeeds. Record the median and the min-max range. Record the commit with `git rev-parse --short HEAD` and check machine load with `uptime`. Write raw numbers to a scratch file outside the repo, such as under the scratchpad directory.
+2. **Record the baseline.** Run the target at least 5 times with identical inputs, using `time` for commands or `hyperfine` if `command -v hyperfine` succeeds. If one run takes over 60 seconds, ask the user for a smaller representative input before repeating it. Record the median and the min-max range. Record the commit with `git rev-parse --short HEAD` and check machine load with `uptime`. Write raw numbers to a scratch file outside the repo, such as under the scratchpad directory.
 
-3. **Profile before editing.** Choose the profiler that matches the language and run it on the target: `python -m cProfile -s cumtime`, `node --cpu-prof`, `go test -cpuprofile`, `perf record` for native binaries, or `EXPLAIN ANALYZE` for SQL. Read the top 10 entries by self time and by cumulative time with `Read` or `grep`. Do not guess the bottleneck from the code alone.
+3. **Profile before editing.** Choose the profiler that matches the language and run it on the target: `python -m cProfile -s cumtime <script>`, `node --cpu-prof <script>`, `go test -cpuprofile`, `perf record` for native binaries, or `EXPLAIN ANALYZE` for SQL. `EXPLAIN ANALYZE` executes the statement, so use a read-only query or wrap a write in a transaction that is rolled back. Read the top 10 entries by self time and by cumulative time with `Read` or `grep`. Do not guess the bottleneck from the code alone.
 
-4. **Confirm one bottleneck.** Pick the single function, query or call that accounts for the largest share of the total time. If no single item exceeds about 30 percent, profile at a finer granularity or with a more representative input before changing anything.
+4. **Confirm one bottleneck.** Pick the single function, query or call that accounts for the largest share of the total time. If no single item exceeds about 30 percent, profile at a finer granularity or with a more representative input before changing anything. If no item exceeds 30 percent after that, report that no single hotspot dominates and stop.
 
-5. **Make one change.** Edit only the code for that bottleneck with `Edit`. Make no unrelated cleanups. Run the existing tests covering the touched code, such as `pytest <path>` or `npm test`. If they fail, fix the regression or revert before continuing.
+5. **Make one change.** Before the first edit, copy each file to be changed into the scratchpad directory so it can be restored exactly. Edit only the code for that bottleneck with `Edit`. Make no unrelated cleanups. Run the existing tests covering the touched code, such as `pytest <path>` or `npm test`. If they fail, fix the regression or revert before continuing.
 
-6. **Re-measure.** Repeat step 2 with the same inputs, environment and run count. Compare medians. Keep the change only if the improvement is larger than the baseline min-max range. Otherwise revert the edit with `git checkout -- <file>`.
+6. **Re-measure.** Repeat step 2 with the same inputs, environment and run count. Compare medians. Keep the change only if the new median is faster than the baseline median by more than the baseline min-max range. Otherwise restore the saved copy from step 5. Do not use `git checkout --`, which would also discard the user's own uncommitted changes.
 
 7. **Iterate or stop.** Return to step 3 for the next bottleneck, still one change at a time. Stop when the success metric is met, or when the newest profile shows no item above 10 percent of the total.
 
@@ -46,4 +46,4 @@ Remaining hotspots: <top item and percent, or none>
 - Keep inputs, test data, environment variables and run count identical between the before and after measurements.
 - Do not commit or push unless the user asks.
 - If the target needs production data, a remote service or a load-testing tool that is not installed, report what is missing instead of inventing numbers.
-- Use subagents with `model: haiku` only to profile separate, independent targets in parallel. A single slow path runs sequentially, because each change depends on the last measurement.
+- If subagents are available, use them with `model: haiku` only to profile separate, independent targets in parallel. A single slow path runs sequentially, because each change depends on the last measurement.

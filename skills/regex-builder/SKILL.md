@@ -11,15 +11,15 @@ Build a regular expression from concrete match and non-match samples, verify it 
 
 1. **Collect samples.** Take the example strings from the request and split them into must-match and must-not-match lists. Aim for at least three of each. If the user gave only positives, add obvious negatives (empty string, wrong length, wrong character class) and state them as assumptions. Ask one clarifying question only when no examples are given and the pattern is unknown.
 
-2. **Pick the flavor.** Use the language or tool the user names (Python `re`, JavaScript, PCRE, Go RE2, `grep -E`). If none is named, check the dominant language with `git ls-files` in the working directory and use it. If that is inconclusive, use Python `re` and say so. RE2 has no lookaround or backreferences, so avoid those for it.
+2. **Pick the flavor.** Use the language or tool the user names (Python `re`, JavaScript, PCRE, Go RE2, `grep -E`). If none is named, use the dominant language among the files listed by `git ls-files` in the working directory. If there is no repo or the result is inconclusive, use Python `re`. Say which flavor was chosen. RE2 has no lookaround or backreferences, so avoid those for it.
 
-3. **Draft the simplest anchored core.** Write one pattern that matches every positive. Anchor it with `^...$` or `\A...\Z` unless the user wants substring matching. Prefer explicit classes such as `[A-Za-z0-9._%+-]+` over `.*`.
+3. **Draft the simplest anchored core.** Write one pattern that matches every positive. Anchor it with `^...$` (or `\A...\Z` in Python, `\A...\z` in RE2) unless the user wants substring matching. Prefer explicit classes such as `[A-Za-z0-9._%+-]+` over `.*`.
 
 4. **Build incrementally.** Add one constraint at a time, such as a length bound, a required separator, or a fixed suffix. After each change, run the test in step 5. Stop when every positive matches and every negative is rejected. Do not add special-case alternations for individual samples unless the user asks.
 
-5. **Test with a script.** Write a small test script in the scratchpad directory, never in the repo. It holds both sample lists, calls `re.fullmatch` (or the flavor's full-match equivalent) on each, and prints PASS or FAIL per sample. Run it with `python3 -I <script>` or `node <script>`. Use `search` only when substring matching was requested.
+5. **Test with a script.** Write a small test script in the scratchpad directory (or a temp directory if none is given), never in the repo. It holds both sample lists, calls `re.fullmatch` (or the flavor's full-match equivalent) on each, and prints PASS or FAIL per sample. Run it with the interpreter for the chosen flavor, such as `python3 -I <script>` or `node <script>`. Use `search` only when substring matching was requested.
 
-6. **Check for catastrophic backtracking.** Look for nested quantifiers such as `(a+)+` or `(\w+\s?)*`, alternations with overlapping branches under a quantifier such as `(a|a)*`, and adjacent unbounded quantifiers over the same class such as `\d+\d+`. Rewrite any hit to remove the ambiguity, for example `(\w+)*` becomes `\w+`. Then time the pattern on a hostile input, such as 30 repeats of `a` followed by `!`, and confirm the runtime stays flat as the input grows.
+6. **Check for catastrophic backtracking.** Look for nested quantifiers such as `(a+)+` or `(\w+\s?)*`, alternations with overlapping branches under a quantifier such as `(a|a)*`, and adjacent unbounded quantifiers over the same class such as `\d+\d+`. Rewrite any hit to remove the ambiguity, for example `(\w+)*` becomes `\w+`. Then time the pattern on a hostile input, such as repeats of `a` followed by `!`, at two or three input lengths (for example 20, 25, 30). Confirm the runtime grows at most linearly rather than exponentially.
 
 7. **Explain each part.** Break the final pattern into tokens and give each one a table row: anchors, character classes, quantifiers, groups, and lookarounds.
 
