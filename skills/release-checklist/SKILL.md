@@ -9,23 +9,23 @@ Verify a release candidate's real state in the repo and CI, prepare the version 
 
 ## Steps
 
-1. **Confirm the repo state.** Run `git status --short` and `git branch --show-current`. If the tree is dirty, list the files and stop until clean. Find the last release tag with `git describe --tags --abbrev=0`; if no tag exists, use the first commit (`git rev-list --max-parents=0 HEAD`) and say so. List unreleased commits with `git log <last-tag>..HEAD --oneline`. If there are none, report nothing to release and stop.
+1. **Confirm the repo state.** Run `git status --short` and `git branch --show-current`. If the tree is dirty, list the files and stop until clean. Find the last release tag with `git describe --tags --abbrev=0`; if no tag exists, set `<base>` to the root commit (`git rev-list --max-parents=0 HEAD`) and say so; otherwise `<base>` is the tag. List unreleased commits with `git log --oneline <base>..HEAD`, or `git log --oneline HEAD` when there is no tag. If there are none, report nothing to release and stop.
 
 2. **Locate every version declaration.** Check `package.json`, `pyproject.toml`, `setup.cfg`, `Cargo.toml`, and `version.txt` directly, then run `grep -rnE --exclude-dir={node_modules,vendor,.git} '__version__|VERSION ='` for version constants. If the values disagree, report them and stop.
 
-3. **Propose the bump.** Derive the bump from commit subjects. If the project follows Conventional Commits, use `!` or `BREAKING CHANGE` for major, `feat` for minor, and `fix` or other types for patch. Otherwise read the last changelog entry for the convention. State the proposed version and reason; edit nothing yet.
+3. **Propose the bump.** Derive the bump from commit subjects and bodies. If the project follows Conventional Commits, use `!` or `BREAKING CHANGE` for major, `feat` for minor, and `fix` or other types for patch. Otherwise read the last changelog entry for the convention. State the proposed version and reason; edit nothing yet.
 
-4. **Verify tests and CI.** Read the test, lint, and typecheck commands from `package.json` scripts, `Makefile`, `tox.ini`, or `.github/workflows/`. Run only check commands, never deploy or release targets. Then, if `gh` is installed, run `gh run list --branch <branch> --limit 5 --json databaseId,headSha,status,conclusion`, match the run whose `headSha` equals `git rev-parse HEAD`, and use `gh run view <run-id> --log-failed` to name the failing job. Without `gh`, ask the user for the CI status. A failing or pending run is a blocker. If no tests exist, report that as a gap, not a pass.
+4. **Verify tests and CI.** Read the test, lint, and typecheck commands from `package.json` scripts, `Makefile`, `tox.ini`, or `.github/workflows/`. Run only test, lint, and typecheck commands; never run deploy or release targets. Then, if `gh` is installed, run `gh run list --branch <branch> --limit 5 --json databaseId,headSha,status,conclusion`, match the run whose `headSha` equals `git rev-parse HEAD` (no match means the commit is unpushed: report pending), and use `gh run view <run-id> --log-failed` to name the failing job. Without `gh`, ask the user for the CI status. A failing or pending run is a blocker; a test gap is reported but does not block. If no tests exist, report that as a gap, not a pass.
 
-5. **Review migrations.** Run `git diff --name-status <last-tag>..HEAD` restricted to `migrations/`, `alembic/versions/`, `db/migrate/`, or `prisma/migrations/`, whichever exists. For each new migration, flag destructive operations (`DROP`, renames, `NOT NULL` without default) and missing down steps as rollout risks.
+5. **Review migrations.** Run `git diff --name-status <base>..HEAD` restricted to `migrations/`, `alembic/versions/`, `db/migrate/`, or `prisma/migrations/`, whichever exists. For each new migration, flag destructive operations (`DROP`, renames, `NOT NULL` without default) and missing down steps as rollout risks.
 
-6. **Draft the changelog.** Read the top of `CHANGELOG.md` to match its format, or note that none exists and use the default headings. Group unreleased commit subjects under Added, Changed, Fixed, Removed, and Breaking. Show the draft only; do not write it to the file yet.
+6. **Draft the changelog.** Read the top of `CHANGELOG.md` to match its format, or note that none exists and use the default headings. Group unreleased commit subjects under Added, Changed, Fixed, Removed, and Breaking. Show the draft only.
 
-7. **Plan rollout and rollback.** Use only deploy mechanisms found in the repo (scripts, Makefile targets, Helm charts, workflows). State the deploy order, whether migrations run before or after code, any feature flags (grep for feature-flag config), the previous artifact or version to roll back to, and the signals that trigger rollback. If none exists, say so rather than inventing one.
+7. **Plan rollout and rollback.** Use only deploy mechanisms found in the repo (scripts, Makefile targets, Helm charts, workflows). State the deploy order, whether migrations run before or after code, any feature flags (grep the config), the previous artifact or version to roll back to, and the signals that trigger rollback. If none exists, say so rather than inventing one.
 
-8. **Request confirmation.** Present the version, files to change, changelog draft, tag name, and publish target. Ask the user to confirm the exact version string. Stop here until they reply. Only after an explicit yes, edit the version files, commit with `git commit`, run `git tag -a v<version> -m "Release v<version>"`, and push with `git push origin <branch> v<version>`. Publishing needs its own explicit yes that names the registry. Confirmation covers only the named version.
+8. **Request confirmation.** Present the version, files to change, changelog draft, tag name, and publish target. Ask the user to confirm the exact version string, then stop. Only after an explicit yes, edit the version files and write the approved changelog entry, stage only those files with `git add <files>`, review `git diff --cached`, commit, run `git tag -a v<version> -m "Release v<version>"`, and push with `git push origin <branch> v<version>`. Never force-push or move an existing tag. Publishing, using the repo's own publish command from step 7, needs a separate explicit yes that names the registry. Confirmation covers only the named version.
 
-9. **Verify and monitor after release.** Confirm the tag exists with `git ls-remote --tags origin v<version>`. If `gh` is installed, check the release workflow with `gh run list --limit 3`. Confirm the artifact is visible in its registry, such as `npm view <pkg> version`. Then list the health and error signals to watch over a window (default 60 minutes).
+9. **Verify and monitor after release.** Only if step 8 ran, confirm the tag exists with `git ls-remote --tags origin v<version>`. If `gh` is installed, check the release workflow with `gh run list --limit 3`. Confirm the artifact is visible in its registry (for example `npm view <pkg> version`, if npm is installed). Then list the health and error signals to watch over a window (default 60 minutes).
 
 ## Output format
 
@@ -53,6 +53,5 @@ Verify a release candidate's real state in the repo and CI, prepare the version 
 
 ## Notes
 
-- Verify state with commands; never assume a test, CI run, or tag.
 - Never tag, push, publish, or create a GitHub release without explicit confirmation in this conversation.
 - If the version source is ambiguous, ask one question and stop.
